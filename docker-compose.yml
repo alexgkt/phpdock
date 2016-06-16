@@ -1,0 +1,63 @@
+version: '2'
+
+services:
+
+### PHP-FPM Container #######################################
+
+    php-nginx:
+        build:
+            context: ./php-nginx
+        volumes_from:
+            - application
+        ports:
+            - "80:80"
+        links:
+            - workspace
+
+### Laravel Application Code Container ######################
+
+    application:
+        build: ./application
+        volumes:
+            - ../:/app
+
+### Databases Data Container ################################
+
+    data:
+        build: ./data
+        volumes:
+            - /var/lib/mariadb:/var/lib/mariadb
+            - /var/lib/redis:/data
+
+### MariaDB Container #######################################
+
+    mariadb:
+        build: ./mariadb
+        volumes_from:
+            - data
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_DATABASE: phpdock
+            MYSQL_USER: phpdock
+            MYSQL_PASSWORD: password
+            MYSQL_ROOT_PASSWORD: password
+
+### Redis Container #########################################
+
+    redis:
+        build: ./redis
+        volumes_from:
+            - data
+        ports:
+            - "6379:6379"
+
+### Workspace Utilities Container ###########################
+
+    workspace:
+        build: ./workspace
+        volumes_from:
+            - application
+        tty: true
+
+### Add more Containers below ###############################
