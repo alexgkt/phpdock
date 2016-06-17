@@ -1,63 +1,73 @@
 version: '2'
-
 services:
+  log:
+    image: alpine
+    volumes:
+      - ./log/nginx:/var/log/nginx
+      - ./log/php-fpm:/var/log/php-fpm
+    entrypoint: /bin/sh
+  
+  conf:
+    image: alpine
+    volumes:
+      - ./vhosts:/etc/nginx/sites-available
+    entrypoint: /bin/sh
 
-### PHP-FPM Container #######################################
+  data:
+    image: alpine
+    volumes:
+      - ./lib/mariadb:/var/lib/mariadb
+      - ./lib/redis:/data
+    entrypoint: /bin/sh
 
-    php-nginx:
-        build:
-            context: ./php-nginx
-        volumes_from:
-            - application
-        ports:
-            - "80:80"
-        links:
-            - workspace
+  application:
+    image: alpine
+    volumes: 
+      - ./app:/app
+    entrypoint: /bin/sh
 
-### Laravel Application Code Container ######################
+  web:
+    image: alexgkt/alpine-php
+    container_name: web
+    volumes_from:
+      - log
+      - conf
+      - application
+    ports:
+      - "80:80"
+    networks:
+      - web
 
-    application:
-        build: ./application
-        volumes:
-            - ../:/app
+  redis:
+    image: redis:3.2:alpine
+    container_name: redis
+    volumes_from:
+      - data
+    ports:
+      - "6379:6379"
+    networks:
+      - redis
+    
 
-### Databases Data Container ################################
+  mariadb:  
+    image: mariadb
+    container_name: mariadb
+    volumes_from:
+      - data
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - "3306:3306"
+    networks:
+      - mariadb
 
-    data:
-        build: ./data
-        volumes:
-            - /var/lib/mariadb:/var/lib/mariadb
-            - /var/lib/redis:/data
+volumes:
+  data:
+  log:
+  conf:
+  application:
 
-### MariaDB Container #######################################
-
-    mariadb:
-        build: ./mariadb
-        volumes_from:
-            - data
-        ports:
-            - "3306:3306"
-        environment:
-            MYSQL_DATABASE: phpdock
-            MYSQL_USER: phpdock
-            MYSQL_PASSWORD: password
-            MYSQL_ROOT_PASSWORD: password
-
-### Redis Container #########################################
-
-    redis:
-        build: ./redis
-        volumes_from:
-            - data
-        ports:
-            - "6379:6379"
-
-### Workspace Utilities Container ###########################
-
-    workspace:
-        build: ./workspace
-        volumes_from:
-            - application
-        tty: true
-
-### Add more Containers below ###############################
+networks:
+  web:
+  mariadb:
+  redis:
